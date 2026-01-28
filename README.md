@@ -330,25 +330,6 @@ No hidden or implicit transitions.
 
 ---
 
-## Open Source
-
-* **License:** Apache 2.0
-* No open-core bait-and-switch
-* Provider-friendly by default
-
-Enterprise features live in separate repositories.
-
----
-
-## Who This Is For
-
-* Indie hosting providers
-* Dev-focused infrastructure teams
-* SaaS platforms needing real servers
-* Power users who want speed without chaos
-
----
-
 ## Contributing
 
 Hyperlane welcomes contributors who value:
