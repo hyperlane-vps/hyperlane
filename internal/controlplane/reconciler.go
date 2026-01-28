@@ -7,23 +7,22 @@ import (
 	"github.com/<your-username>/hyperlane/internal/state"
 )
 
-// Reconciler periodically ensures that observed state matches desired state
 type Reconciler struct {
 	Store      *state.StateStore
 	PollPeriod time.Duration
 	StopChan   chan struct{}
+	Agent      *AgentClient
 }
 
-// NewReconciler returns a new reconciler
-func NewReconciler(store *state.StateStore, pollPeriod time.Duration) *Reconciler {
+func NewReconciler(store *state.StateStore, pollPeriod time.Duration, agent *AgentClient) *Reconciler {
 	return &Reconciler{
 		Store:      store,
 		PollPeriod: pollPeriod,
 		StopChan:   make(chan struct{}),
+		Agent:      agent,
 	}
 }
 
-// Start begins the reconciliation loop
 func (r *Reconciler) Start() {
 	fmt.Println("Reconciliation loop started")
 	ticker := time.NewTicker(r.PollPeriod)
@@ -40,12 +39,10 @@ func (r *Reconciler) Start() {
 	}
 }
 
-// Stop signals the reconciler to stop
 func (r *Reconciler) Stop() {
 	close(r.StopChan)
 }
 
-// reconcile fetches desired and observed states and applies minimal actions
 func (r *Reconciler) reconcile() {
 	desiredVMs, err := r.Store.ListDesired()
 	if err != nil {
@@ -66,16 +63,37 @@ func (r *Reconciler) reconcile() {
 
 	for _, d := range desiredVMs {
 		o, exists := obsMap[d.Name]
-		if !exists {
-			fmt.Printf("VM %s not observed yet. Would provision now.\n", d.Name)
-			// TODO: trigger agent to create VM
+
+		// VM not yet observed → create it
+		if !exists || o.State == state.Requested {
+			fmt.Printf("Reconciling VM %s: creating...\n", d.Name)
+			r.Agent.CreateVM(d.Name, d.CPU, d.RAM, d.Image)
+
+			// Update observed state as provisioning
+			r.Store.SetObservedState(state.VM{
+				Name:      d.Name,
+				CPU:       d.CPU,
+				RAM:       d.RAM,
+				Image:     d.Image,
+				State:     state.Provisioning,
+				UpdatedAt: time.Now(),
+			})
 			continue
 		}
 
+		// VM exists but state mismatch → take corrective action
 		if d.State != o.State {
-			fmt.Printf("VM %s state mismatch (desired: %s, observed: %s). Reconciling...\n",
-				d.Name, d.State, o.State)
-			// TODO: trigger agent to align state
+			fmt.Printf("VM %s state mismatch (desired: %s, observed: %s)\n", d.Name, d.State, o.State)
+			switch d.State {
+			case state.Running:
+				r.Agent.CreateVM(d.Name, d.CPU, d.RAM, d.Image)
+			case state.Stopped:
+				r.Agent.StopVM(d.Name)
+			case state.Destroyed:
+				r.Agent.DestroyVM(d.Name)
+			default:
+				fmt.Println("Unhandled desired state:", d.State)
+			}
 		} else {
 			fmt.Printf("VM %s is in desired state: %s\n", d.Name, d.State)
 		}
