@@ -15,7 +15,14 @@ func main() {
 	}
 	defer store.Close()
 
-	reconciler := controlplane.NewReconciler(store, 5*time.Second)
+	// Connect to local agent
+	agent, err := controlplane.NewAgentClient("localhost:50051", "certs/ca.crt")
+	if err != nil {
+		log.Fatalf("Failed to connect to agent: %v", err)
+	}
+	defer agent.Close()
+
+	reconciler := controlplane.NewReconciler(store, 5*time.Second, agent)
 	go reconciler.Start()
 
 	// Keep control plane running
