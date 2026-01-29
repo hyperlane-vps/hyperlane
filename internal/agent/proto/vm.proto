@@ -2,43 +2,23 @@ syntax = "proto3";
 
 package agent;
 
-option go_package = "github.com/<your-username>/hyperlane/internal/agent/proto";
-
-// VM lifecycle requests from control plane
 service VMService {
   rpc CreateVM(CreateVMRequest) returns (VMResponse);
   rpc StopVM(StopVMRequest) returns (VMResponse);
   rpc DestroyVM(DestroyVMRequest) returns (VMResponse);
-  rpc ReportState(StateReportRequest) returns (VMResponse);
+  rpc ReportState(Empty) returns (StateReport);
 }
 
-// Request/Response messages
-message CreateVMRequest {
-  string name = 1;
-  int32 cpu = 2;
-  int32 ram = 3;
-  string image = 4;
-}
-
-message StopVMRequest {
-  string name = 1;
-}
-
-message DestroyVMRequest {
-  string name = 1;
-}
-
-message StateReportRequest {
-  repeated VMInfo vms = 1;
-}
+message Empty {}
 
 message VMInfo {
   string name = 1;
-  string state = 2;
-  string last_error = 3;
+  string state = 2; // running | stopped | crashed | unknown
+  uint32 cpu = 3;
+  uint32 ram = 4;
+  string node_id = 5;
 }
 
-message VMResponse {
-  bool success = 1;
-  string message = 2;
+message StateReport {
+  repeated VMInfo vms = 1;
 }
