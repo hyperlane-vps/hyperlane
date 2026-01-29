@@ -1,0 +1,32 @@
+type vmServer struct {
+	pb.UnimplementedVMServiceServer
+	Agent *VMAgent
+}
+
+func newServer() *vmServer {
+	return &vmServer{Agent: &VMAgent{}}
+}
+
+func (s *vmServer) CreateVM(ctx context.Context, req *pb.CreateVMRequest) (*pb.VMResponse, error) {
+	err := s.Agent.CreateVM(req.Name, int(req.Cpu), int(req.Ram), req.Image)
+	if err != nil {
+		return &pb.VMResponse{Success: false, Message: err.Error()}, nil
+	}
+	return &pb.VMResponse{Success: true, Message: "VM created successfully"}, nil
+}
+
+func (s *vmServer) StopVM(ctx context.Context, req *pb.StopVMRequest) (*pb.VMResponse, error) {
+	err := s.Agent.StopVM(req.Name)
+	if err != nil {
+		return &pb.VMResponse{Success: false, Message: err.Error()}, nil
+	}
+	return &pb.VMResponse{Success: true, Message: "VM stopped"}, nil
+}
+
+func (s *vmServer) DestroyVM(ctx context.Context, req *pb.DestroyVMRequest) (*pb.VMResponse, error) {
+	err := s.Agent.DestroyVM(req.Name)
+	if err != nil {
+		return &pb.VMResponse{Success: false, Message: err.Error()}, nil
+	}
+	return &pb.VMResponse{Success: true, Message: "VM destroyed"}, nil
+}
